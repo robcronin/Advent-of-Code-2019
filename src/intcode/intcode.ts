@@ -9,12 +9,14 @@ enum OpCode {
   JUMP_IF_FALSE = 6,
   LESS_THAN = 7,
   EQUALS = 8,
+  ADJUST_RELATIVE_BASE = 9,
   HALT = 99,
 }
 
 enum ParameterMode {
   POSITION = 0,
   IMMEDIATE = 1,
+  RELATIVE = 2,
 }
 
 export enum IntcodeStatus {
@@ -25,12 +27,14 @@ export enum IntcodeStatus {
 }
 
 type Program = number[];
+type Memory = Record<number, number>;
 type ProgramChanges = Record<number, number>;
 
 export class Intcode {
   private program: Program;
-  private memory: Program = [];
+  private memory: Memory = {};
   private pointer: number = 0;
+  private relativeBase: number = 0;
   private isHalted: boolean = false;
   private isReady: boolean = false;
   private isPaused: boolean = false;
@@ -43,8 +47,9 @@ export class Intcode {
   }
 
   private initialiseMemory = () => {
-    this.memory = [...this.program];
+    this.memory = Object.assign({}, this.program);
     this.pointer = 0;
+    this.relativeBase = 0;
     this.isHalted = false;
     this.isReady = false;
     this.isPaused = false;
@@ -52,33 +57,41 @@ export class Intcode {
     this.outputs = [];
   };
 
-  private getParameter = (parameter: number) =>
-    this.memory[this.pointer + parameter];
+  public get = (index: number) => {
+    if (this.memory[index] === undefined) {
+      this.memory[index] = 0;
+      return 0;
+    }
+    return this.memory[index];
+  };
+  public set = (index: number, value: number) => (this.memory[index] = value);
 
-  private getParameterValue = (parameter: number, mode: ParameterMode) => {
+  private getParameterAddress = (parameter: number, mode: ParameterMode) => {
     const parameterMode = mode !== undefined ? mode : 0;
     switch (parameterMode) {
       case ParameterMode.POSITION:
-        return this.memory[this.getParameter(parameter)];
+        return this.get(this.pointer + parameter);
       case ParameterMode.IMMEDIATE:
-        return this.getParameter(parameter);
+        return this.pointer + parameter;
+      case ParameterMode.RELATIVE:
+        return this.get(this.pointer + parameter) + this.relativeBase;
       default:
         throw new Error(`Unsupported parameter mode: ${parameterMode}`);
     }
   };
 
-  private getAllParameterValues = (modes: ParameterMode[]) =>
+  private getAllParameterAddresses = (modes: ParameterMode[]) =>
     range(1, 4).map((parameter, index) =>
-      this.getParameterValue(parameter, modes[index]),
+      this.getParameterAddress(parameter, modes[index]),
     );
 
   private alterMemoryValues = (
     parameterValues: number[],
-    writeParamNum: number,
+    writeAddress: number,
     fn: (parameters: number[]) => number,
   ) => {
     const opReturn = fn(parameterValues);
-    this.memory[this.getParameter(writeParamNum)] = opReturn;
+    this.set(writeAddress, opReturn);
   };
 
   private parseOpCode = (
@@ -91,15 +104,24 @@ export class Intcode {
   };
 
   private runOperation = () => {
-    const { opCode, modes } = this.parseOpCode(this.memory[this.pointer]);
-    const parameterValues = this.getAllParameterValues(modes);
+    const { opCode, modes } = this.parseOpCode(this.get(this.pointer));
+    const parameterAddresses = this.getAllParameterAddresses(modes);
+    const parameterValues = parameterAddresses.map(this.get);
     switch (opCode) {
       case OpCode.ADD:
-        this.alterMemoryValues(parameterValues, 3, ([a, b]) => a + b);
+        this.alterMemoryValues(
+          parameterValues,
+          parameterAddresses[2],
+          ([a, b]) => a + b,
+        );
         this.pointer += 4;
         break;
       case OpCode.MULTIPLY:
-        this.alterMemoryValues(parameterValues, 3, ([a, b]) => a * b);
+        this.alterMemoryValues(
+          parameterValues,
+          parameterAddresses[2],
+          ([a, b]) => a * b,
+        );
         this.pointer += 4;
         break;
       case OpCode.INPUT:
@@ -107,7 +129,11 @@ export class Intcode {
         if (input === undefined) {
           this.isPaused = true;
         } else {
-          this.alterMemoryValues(parameterValues, 1, () => input);
+          this.alterMemoryValues(
+            parameterValues,
+            parameterAddresses[0],
+            () => input,
+          );
           this.pointer += 2;
         }
         break;
@@ -124,14 +150,24 @@ export class Intcode {
         else this.pointer += 3;
         break;
       case OpCode.LESS_THAN:
-        this.alterMemoryValues(parameterValues, 3, ([a, b]) => (a < b ? 1 : 0));
+        this.alterMemoryValues(
+          parameterValues,
+          parameterAddresses[2],
+          ([a, b]) => (a < b ? 1 : 0),
+        );
         this.pointer += 4;
         break;
       case OpCode.EQUALS:
-        this.alterMemoryValues(parameterValues, 3, ([a, b]) =>
-          a === b ? 1 : 0,
+        this.alterMemoryValues(
+          parameterValues,
+          parameterAddresses[2],
+          ([a, b]) => (a === b ? 1 : 0),
         );
         this.pointer += 4;
+        break;
+      case OpCode.ADJUST_RELATIVE_BASE:
+        this.relativeBase += parameterValues[0];
+        this.pointer += 2;
         break;
       case OpCode.HALT:
         this.isHalted = true;
@@ -145,9 +181,10 @@ export class Intcode {
     this.initialiseMemory();
     if (inputs !== undefined) this.inputs = inputs;
     Object.entries(programChanges).forEach(([address, value]) => {
-      this.memory[+address] = value;
+      this.set(+address, value);
     });
     this.isReady = true;
+    return this;
   };
 
   public runProgram = () => {
@@ -166,7 +203,7 @@ export class Intcode {
   };
 
   public getOutput = () => {
-    if (this.outputs.length === 0) return this.memory[0];
+    if (this.outputs.length === 0) return this.get(0);
     return this.outputs[this.outputs.length - 1];
   };
 

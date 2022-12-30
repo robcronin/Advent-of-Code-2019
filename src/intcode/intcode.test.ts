@@ -111,7 +111,49 @@ describe('parameter modes', () => {
     const intcode = new Intcode([1002, 4, 3, 4, 33]);
     intcode.setUpProgram({});
     expect(intcode.runProgram()).toBe(1002);
-    expect(intcode.debugGetMemory()).toEqual([1002, 4, 3, 4, 99]);
+    expect(intcode.debugGetMemory()).toEqual({
+      '0': 1002,
+      '1': 4,
+      '2': 3,
+      '3': 4,
+      '4': 99,
+      '5': 0,
+      '6': 0,
+      '7': 0,
+    });
+  });
+  it('should handle relative mode', () => {
+    const intcode = new Intcode([
+      109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99,
+    ]).setUpProgram({});
+    expect(intcode.runProgram()).toBe(99);
+    expect(intcode.debugGetMemory()).toEqual({
+      '-1': 0,
+      '0': 109,
+      '1': 1,
+      '10': 16,
+      '100': 16,
+      '1001': 0,
+      '101': 1,
+      '11': 101,
+      '12': 1006,
+      '13': 101,
+      '14': 0,
+      '15': 99,
+      '16': 0,
+      '17': 0,
+      '18': 0,
+      '2': 204,
+      '204': 0,
+      '3': -1,
+      '4': 1001,
+      '5': 100,
+      '6': 1,
+      '7': 100,
+      '8': 1008,
+      '9': 100,
+      '99': 0,
+    });
   });
 });
 
