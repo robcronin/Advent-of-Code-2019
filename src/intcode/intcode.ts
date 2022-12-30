@@ -17,6 +17,13 @@ enum ParameterMode {
   IMMEDIATE = 1,
 }
 
+export enum IntcodeStatus {
+  PENDING = 1,
+  READY = 2,
+  HALTED = 3,
+  PAUSED = 4,
+}
+
 type Program = number[];
 type ProgramChanges = Record<number, number>;
 
@@ -26,7 +33,8 @@ export class Intcode {
   private pointer: number = 0;
   private isHalted: boolean = false;
   private isReady: boolean = false;
-  private input?: number;
+  private isPaused: boolean = false;
+  private inputs: number[] = [];
   private outputs: number[] = [];
 
   constructor(program: Program) {
@@ -38,7 +46,9 @@ export class Intcode {
     this.memory = [...this.program];
     this.pointer = 0;
     this.isHalted = false;
-    this.input = undefined;
+    this.isReady = false;
+    this.isPaused = false;
+    this.inputs = [];
     this.outputs = [];
   };
 
@@ -93,10 +103,13 @@ export class Intcode {
         this.pointer += 4;
         break;
       case OpCode.INPUT:
-        const input = this.input;
-        if (input === undefined) throw new Error('Missing input value');
-        this.alterMemoryValues(parameterValues, 1, () => input);
-        this.pointer += 2;
+        const input = this.inputs.shift();
+        if (input === undefined) {
+          this.isPaused = true;
+        } else {
+          this.alterMemoryValues(parameterValues, 1, () => input);
+          this.pointer += 2;
+        }
         break;
       case OpCode.OUTPUT:
         this.outputs.push(parameterValues[0]);
@@ -128,9 +141,9 @@ export class Intcode {
     }
   };
 
-  public setUpProgram = (programChanges: ProgramChanges, input?: number) => {
+  public setUpProgram = (programChanges: ProgramChanges, inputs?: number[]) => {
     this.initialiseMemory();
-    if (input !== undefined) this.input = input;
+    if (inputs !== undefined) this.inputs = inputs;
     Object.entries(programChanges).forEach(([address, value]) => {
       this.memory[+address] = value;
     });
@@ -139,15 +152,29 @@ export class Intcode {
 
   public runProgram = () => {
     if (!this.isReady) throw new Error('Tried running program pre setup');
-    while (!this.isHalted) {
-      this.runOperation();
-    }
+    while (!this.isHalted && !this.isPaused) this.runOperation();
+    this.isReady = false;
     return this.getOutput();
+  };
+
+  public resumeProgram = (inputs: number[]) => {
+    if (!this.isPaused) throw new Error('Tried resuming non paused program');
+    this.inputs = inputs;
+    this.isReady = true;
+    this.isPaused = false;
+    return this.runProgram();
   };
 
   public getOutput = () => {
     if (this.outputs.length === 0) return this.memory[0];
     return this.outputs[this.outputs.length - 1];
+  };
+
+  public getStatus = (): IntcodeStatus => {
+    if (this.isReady) return IntcodeStatus.READY;
+    if (this.isPaused) return IntcodeStatus.PAUSED;
+    if (this.isHalted) return IntcodeStatus.HALTED;
+    return IntcodeStatus.PENDING;
   };
 
   public debugGetMemory = () => this.memory;

@@ -3,3 +3,13 @@ export const countArr = <T>(arr: T[], countFn: (i: T) => boolean) =>
 
 export const sumArr = <T>(arr: T[], sumFn: (i: T, index: number) => number) =>
   arr.reduce((acc, i, index) => sumFn(i, index) + acc, 0);
+
+export const getPermutations = (inputs: number[]): number[][] => {
+  if (inputs.length === 1) return [inputs];
+  return inputs.reduce((allPerms: number[][], value) => {
+    const remaining = inputs.filter((a) => a !== value);
+    const remainingPerms = getPermutations(remaining);
+    const perms = remainingPerms.map((perm) => [value].concat(perm));
+    return [...allPerms, ...perms];
+  }, []);
+};
