@@ -25,13 +25,13 @@ export const genNewExpandingGrid = <ValueType>({
   numCols,
   defaultValue,
 }: {
-  numRows: number;
-  numCols: number;
+  numRows?: number;
+  numCols?: number;
   defaultValue: ValueType;
 }): ExpandingGrid<ValueType> => {
   const expandingGrid: ExpandingGrid<ValueType> = {};
-  range(numRows).forEach((x) => {
-    range(numCols).forEach((y) => {
+  range(numRows || 1).forEach((x) => {
+    range(numCols || 1).forEach((y) => {
       if (!expandingGrid[x]) expandingGrid[x] = {};
       expandingGrid[x][y] = defaultValue;
     });

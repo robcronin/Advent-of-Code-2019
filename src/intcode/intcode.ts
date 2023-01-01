@@ -26,7 +26,7 @@ export enum IntcodeStatus {
   PAUSED = 4,
 }
 
-type Program = number[];
+export type Program = number[];
 type Memory = Record<number, number>;
 type ProgramChanges = Record<number, number>;
 
@@ -177,12 +177,10 @@ export class Intcode {
     }
   };
 
-  public setUpProgram = (
-    setup?: {
-      programChanges?: ProgramChanges;
-      inputs?: number[];
-    },
-  ) => {
+  public setUpProgram = (setup?: {
+    programChanges?: ProgramChanges;
+    inputs?: number[];
+  }) => {
     this.initialiseMemory();
     if (setup) {
       const { programChanges, inputs } = setup;
@@ -207,6 +205,7 @@ export class Intcode {
   public resumeProgram = (inputs: number[]) => {
     if (!this.isPaused) throw new Error('Tried resuming non paused program');
     this.inputs = inputs;
+    this.outputs = [];
     this.isReady = true;
     this.isPaused = false;
     return this.runProgram();
@@ -216,6 +215,7 @@ export class Intcode {
     if (this.outputs.length === 0) return this.get(0);
     return this.outputs[this.outputs.length - 1];
   };
+  public getAllOutputs = () => this.outputs;
 
   public getStatus = (): IntcodeStatus => {
     if (this.isReady) return IntcodeStatus.READY;
