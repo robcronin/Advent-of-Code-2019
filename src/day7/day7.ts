@@ -10,7 +10,7 @@ const getThrusterOutput = (program: number[], phaseSettings: number[]) => {
     amplifiers.forEach((amplifier, index) => {
       const status = amplifier.getStatus();
       if (status === IntcodeStatus.PENDING) {
-        amplifier.setUpProgram({}, [phaseSettings[index], input]);
+        amplifier.setUpProgram({ inputs: [phaseSettings[index], input] });
         input = amplifier.runProgram();
       } else if (status === IntcodeStatus.PAUSED) {
         input = amplifier.resumeProgram([input]);

@@ -177,12 +177,22 @@ export class Intcode {
     }
   };
 
-  public setUpProgram = (programChanges: ProgramChanges, inputs?: number[]) => {
+  public setUpProgram = (
+    setup?: {
+      programChanges?: ProgramChanges;
+      inputs?: number[];
+    },
+  ) => {
     this.initialiseMemory();
-    if (inputs !== undefined) this.inputs = inputs;
-    Object.entries(programChanges).forEach(([address, value]) => {
-      this.set(+address, value);
-    });
+    if (setup) {
+      const { programChanges, inputs } = setup;
+      if (programChanges) {
+        Object.entries(programChanges).forEach(([address, value]) => {
+          this.set(+address, value);
+        });
+      }
+      if (inputs) this.inputs = inputs;
+    }
     this.isReady = true;
     return this;
   };
