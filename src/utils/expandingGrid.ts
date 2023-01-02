@@ -179,3 +179,22 @@ export const countValueInGrid = <ValueType>(
     0,
   );
 };
+
+export const findValueInExpandingGrid = <ValueType>(
+  expandingGrid: ExpandingGrid<ValueType>,
+  value: ValueType,
+): Coords | undefined => {
+  const { minX, maxX, minY, maxY } = getExpandingDimensions(expandingGrid);
+
+  let y;
+  const x = range(minX, maxX + 1).findIndex((x) => {
+    const yInt = range(minY, maxY + 1).findIndex(
+      (y) => getValueExpandingGrid(expandingGrid, { x, y }) === value,
+    );
+    if (yInt !== -1) {
+      y = yInt;
+      return true;
+    }
+  });
+  if (x && y) return { x, y };
+};
