@@ -189,7 +189,7 @@ export class Intcode {
           this.set(+address, value);
         });
       }
-      if (inputs) this.inputs = inputs;
+      if (inputs) this.inputs = [...inputs];
     }
     this.isReady = true;
     return this;
@@ -204,7 +204,7 @@ export class Intcode {
 
   public resumeProgram = (inputs: number[]) => {
     if (!this.isPaused) throw new Error('Tried resuming non paused program');
-    this.inputs = inputs;
+    this.inputs = [...inputs];
     this.outputs = [];
     this.isReady = true;
     this.isPaused = false;

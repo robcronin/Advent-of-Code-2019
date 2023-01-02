@@ -198,3 +198,20 @@ export const findValueInExpandingGrid = <ValueType>(
   });
   if (x && y) return { x, y };
 };
+
+export const findValuesInExpandingGrid = <ValueType>(
+  expandingGrid: ExpandingGrid<ValueType>,
+  value: ValueType,
+): Coords[] => {
+  const coords: Coords[] = [];
+  const { minX, maxX, minY, maxY } = getExpandingDimensions(expandingGrid);
+
+  range(minX, maxX + 1).forEach((x) => {
+    range(minY, maxY + 1).forEach((y) => {
+      if (getValueExpandingGrid(expandingGrid, { x, y }) === value) {
+        coords.push({ x, y });
+      }
+    });
+  });
+  return coords;
+};
